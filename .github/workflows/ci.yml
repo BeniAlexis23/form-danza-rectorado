@@ -1,0 +1,67 @@
+name: Verificar aplicación e imagen Docker
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: ci-only-db-password
+          MYSQL_ROOT_HOST: "%"
+          MYSQL_DATABASE: undc_danzas_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pci-only-db-password"
+          --health-interval=10s --health-timeout=5s --health-retries=12
+    env:
+      MYSQL_HOST: 127.0.0.1
+      MYSQL_PORT: 3306
+      MYSQL_USER: root
+      MYSQL_PASSWORD: ci-only-db-password
+      MYSQL_DATABASE: undc_danzas_test
+      DB_CREATE_DATABASE: "false"
+      ADMIN_EMAIL: ci@example.test
+      ADMIN_KEY: CiKey12345
+      TEST_MODE: "false"
+      REGISTRATION_CLOSES_AT: "2099-11-14T00:00:00-05:00"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+      - run: pnpm db:init
+      - run: pnpm test:integration
+      - run: pnpm build
+      - name: Construir la imagen de producción
+        run: docker build -t undc-danzas:ci .
+      - name: Comprobar imagen, conexión MySQL y ficha PDF
+        run: |
+          docker run -d --name undc-ci --network host \
+            -e MYSQL_HOST -e MYSQL_PORT -e MYSQL_USER -e MYSQL_PASSWORD \
+            -e MYSQL_DATABASE -e ADMIN_EMAIL -e ADMIN_KEY \
+            -e REGISTRATION_CLOSES_AT undc-danzas:ci
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:3001/api/health; then break; fi
+            sleep 2
+          done
+          curl --fail http://127.0.0.1:3001/api/health
+          curl --fail http://127.0.0.1:3001/ -o /tmp/undc-index.html
+          curl --fail -H 'Authorization: Bearer CiKey12345' \
+            -H 'X-Admin-Email: ci@example.test' \
+            http://127.0.0.1:3001/api/admin/sheet.pdf -o /tmp/undc-sheet.pdf
+          node -e "const fs=require('fs');if(fs.readFileSync('/tmp/undc-sheet.pdf').subarray(0,5).toString()!=='%PDF-')process.exit(1)"
+      - name: Logs y limpieza
+        if: always()
+        run: |
+          docker logs undc-ci || true
+          docker rm -f undc-ci || true
