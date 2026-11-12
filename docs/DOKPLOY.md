@@ -1,5 +1,7 @@
 # Despliegue desde GitHub a Dokploy
 
+Para desplegar la aplicación y MySQL juntos en un solo servicio Docker Compose, seguir [DOKPLOY-COMPOSE.md](DOKPLOY-COMPOSE.md). Los pasos de este documento corresponden a la alternativa con Application y MySQL separados.
+
 La aplicación se construye desde el `Dockerfile` de la raíz con Node.js 24 y pnpm 11.25.0. Express sirve la interfaz compilada, la API, las bases y el visor PDF en el mismo puerto interno **3001**. No se usa el servidor de desarrollo Vite en producción.
 
 ## 1. Subir el proyecto a GitHub

@@ -4,6 +4,8 @@ Aplicación cliente-servidor con React, Express, Node.js, TypeScript y **MySQL**
 
 Para desplegar desde GitHub en Dokploy, seguir [docs/DOKPLOY.md](docs/DOKPLOY.md). Se incluyen Dockerfile, variables de producción, healthcheck e integración continua. La imagen inicia en el puerto 3001 y prepara las tablas en una base MySQL existente sin eliminar registros.
 
+Para levantar aplicación y MySQL juntos, usar `docker-compose.yml` y seguir [docs/DOKPLOY-COMPOSE.md](docs/DOKPLOY-COMPOSE.md). Las variables están documentadas en `.env.compose.example`.
+
 ## Ejecutar
 
 Requisitos: Node.js 22.12 o superior, pnpm 11.25.0 y MySQL 8.0 o superior.

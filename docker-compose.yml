@@ -1,0 +1,75 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 15s
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: "3001"
+      TRUST_PROXY: ${TRUST_PROXY:-1}
+      MYSQL_HOST: mysql
+      MYSQL_PORT: "3306"
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-undc_danzas}
+      MYSQL_USER: ${MYSQL_USER:-undc_danzas}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Define MYSQL_PASSWORD}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?Define ADMIN_EMAIL}
+      ADMIN_KEY: ${ADMIN_KEY:?Define ADMIN_KEY de exactamente 10 caracteres}
+      RUN_DB_INIT: "true"
+      DB_CREATE_DATABASE: "false"
+      TEST_MODE: ${TEST_MODE:-false}
+      REGISTRATION_CLOSES_AT: ${REGISTRATION_CLOSES_AT:-2026-11-14T00:00:00-05:00}
+    expose:
+      - "3001"
+    networks:
+      - database
+      - dokploy-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-undc_danzas}
+      MYSQL_USER: ${MYSQL_USER:-undc_danzas}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Define MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Define MYSQL_ROOT_PASSWORD}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - database
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          MYSQL_PWD="$${MYSQL_PASSWORD}" mysql --protocol=TCP -h 127.0.0.1
+          --user="$${MYSQL_USER}" --database="$${MYSQL_DATABASE}"
+          --execute="SELECT 1" > /dev/null 2>&1
+      interval: 10s
+      timeout: 5s
+      start_period: 60s
+      retries: 12
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  mysql-data:
+
+networks:
+  database:
+    internal: true
+  dokploy-network:
+    external: true

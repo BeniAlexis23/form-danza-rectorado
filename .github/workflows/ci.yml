@@ -42,6 +42,11 @@ jobs:
       - run: pnpm db:init
       - run: pnpm test:integration
       - run: pnpm build
+      - name: Validar Docker Compose
+        env:
+          MYSQL_USER: undc_danzas
+          MYSQL_ROOT_PASSWORD: ci-only-compose-root-password
+        run: docker compose -f docker-compose.yml config --quiet
       - name: Construir la imagen de producción
         run: docker build -t undc-danzas:ci .
       - name: Comprobar imagen, conexión MySQL y ficha PDF
